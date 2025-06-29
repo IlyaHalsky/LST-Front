@@ -21,8 +21,8 @@ export interface Action {
 }
 
 export const DefaultAppState = {
-    fieldId: 0,
-    boardId: 0,
+    fieldId: 38,
+    boardId: 34,
     opponent: [],
     player: [],
 }
