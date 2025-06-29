@@ -23,7 +23,8 @@ function CardComp({card: {id, attack, health}, position, draggable, setLastActio
     const [{isOver, canDrop}, drop] = useDrop(() => ({
         accept: ItemTypes.CARD,
         canDrop: () => !draggable,
-        drop: (target: CardWithPosition) => setLastAction({from: target, to: {id, attack, health, position}}),
+        drop: (target: CardWithPosition) =>
+            !!setLastAction && setLastAction({from: target, to: {id, attack, health, position}}),
         collect: monitor => ({
             isOver: !!monitor.isOver() && monitor.canDrop(),
             canDrop: !monitor.isOver() && !!monitor.canDrop(),
@@ -40,7 +41,9 @@ function CardComp({card: {id, attack, health}, position, draggable, setLastActio
     return (
         <>
             <DragPreviewImage connect={preview} src={imageUrl}/>
-            <div ref={(ref) => drag(drop(ref))} className="card">
+            <div ref={node => {
+                drag(drop(node))
+            }} className="card">
                 <img src={frame} className={classNames}/>
                 <img src={imageUrl} className="cardArt"/>
                 <span className="cardText attack" data-text={attack}>{attack}</span>
