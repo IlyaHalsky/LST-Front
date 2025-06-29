@@ -1,0 +1,110 @@
+/**
+ * API functions for communicating with the backend
+ * 
+ * This file contains all HTTP-related functions and session management
+ * to keep the App component clean and focused on UI rendering.
+ */
+
+import {type Action, type AppState, DefaultAppState} from './models.tsx';
+import { getApiUrl } from './apiConfig';
+
+// Function to generate a random session key
+export const generateSessionKey = (): string => {
+    const array = new Uint8Array(16);
+    window.crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+};
+
+// Function to get or set the lst_session cookie
+export const getOrSetSessionCookie = (): string => {
+    const cookieName = 'lst_session';
+    const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+    const sessionCookie = cookies.find(cookie => cookie.startsWith(`${cookieName}=`));
+
+    if (sessionCookie) {
+        return sessionCookie.split('=')[1];
+    } else {
+        const sessionKey = generateSessionKey();
+        // Set cookie with no expiration (lives forever)
+        document.cookie = `${cookieName}=${sessionKey}; path=/; max-age=31536000000`;
+        return sessionKey;
+    }
+};
+
+// Function to hash an action with a session key for verification
+export const hashAction = async (action: Action, sessionKey: string): Promise<string> => {
+    const actionStr = JSON.stringify(action);
+    const data = actionStr + sessionKey;
+    const encoder = new TextEncoder();
+    const encodedData = encoder.encode(data);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', encodedData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+};
+
+// Function to fetch initial state from the backend
+export const fetchInitialState = async (sessionKey: string): Promise<AppState> => {
+    try {
+        // Prepare payload with sessionKey
+        const payload = {
+            sessionKey
+        };
+
+        // Send request to backend/init endpoint
+        const response = await fetch(getApiUrl('/init'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            // Parse response and return state
+            return await response.json();
+        } else {
+            console.error('Error initializing state from server:', response.status);
+            // Return default state if server request fails
+            return DefaultAppState;
+        }
+    } catch (error) {
+        console.error('Error fetching initial state:', error);
+        // Return default state if request fails
+        return DefaultAppState;
+    }
+};
+
+// Function to send an action to the server and get updated state
+export const sendActionToServer = async (lastAction: Action, sessionKey: string): Promise<AppState | null> => {
+    try {
+        // Generate action key by hashing lastAction with sessionKey
+        const actionKey = await hashAction(lastAction, sessionKey);
+
+        // Prepare payload
+        const payload = {
+            lastAction,
+            sessionKey,
+            actionKey
+        };
+
+        // Send request to server using configured API URL
+        const response = await fetch(getApiUrl('/action'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            // Parse response and return new state
+            return await response.json();
+        } else {
+            console.error('Server returned an error:', response.status);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error sending action to server:', error);
+        return null;
+    }
+};
