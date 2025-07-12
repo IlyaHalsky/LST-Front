@@ -7,7 +7,7 @@ export default defineConfig({
   base: '/LST-Front/',
   server: {
     proxy: {
-      '^/(action|init|reset)': {
+      '^/(action|init|reset|username)': {
         target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,

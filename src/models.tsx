@@ -13,6 +13,7 @@ export interface AppState {
     boardId: number
     opponent: Card[]
     player: Card[]
+    username?: string
 }
 
 export interface Action {
@@ -25,6 +26,7 @@ export const DefaultAppState = {
     boardId: 34,
     opponent: [],
     player: [],
+    username: '',
 }
 
 export const ItemTypes = {
